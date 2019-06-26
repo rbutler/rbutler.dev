@@ -15,13 +15,20 @@ main = hakyll $ do
         route   idRoute
         compile compressCssCompiler
 
-    match (fromList ["about.rst", "contact.markdown"]) $ do
+    match (fromList ["about.md", "contact.markdown"]) $ do
         route   $ setExtension "html"
         compile $ pandocCompiler
             >>= loadAndApplyTemplate "templates/default.html" defaultContext
             >>= relativizeUrls
 
     match "posts/*" $ do
+        route $ setExtension "html"
+        compile $ pandocCompiler
+            >>= loadAndApplyTemplate "templates/post.html"    postCtx
+            >>= loadAndApplyTemplate "templates/default.html" postCtx
+            >>= relativizeUrls
+
+    match "tils/*" $ do
         route $ setExtension "html"
         compile $ pandocCompiler
             >>= loadAndApplyTemplate "templates/post.html"    postCtx
@@ -42,18 +49,35 @@ main = hakyll $ do
                 >>= loadAndApplyTemplate "templates/default.html" archiveCtx
                 >>= relativizeUrls
 
+    create ["tils.html"] $ do
+        route idRoute
+        compile $ do
+            tils <- recentFirst =<< loadAll "tils/*"
+            let archiveCtx =
+                    listField "tils" postCtx (return tils) `mappend`
+                    constField "title" "TILs"              `mappend`
+                    defaultContext
+
+            makeItem ""
+                >>= loadAndApplyTemplate "templates/tils.html" archiveCtx
+                >>= loadAndApplyTemplate "templates/default.html" archiveCtx
+                >>= relativizeUrls
+
 
     match "index.html" $ do
         route idRoute
         compile $ do
             posts <- recentFirst =<< loadAll "posts/*"
+            tils <- recentFirst =<< loadAll "tils/*"
             let indexCtx =
                     listField "posts" postCtx (return posts) `mappend`
+                    listField "tils" postCtx (return tils)   `mappend`
                     constField "title" "Home"                `mappend`
                     defaultContext
 
             getResourceBody
                 >>= applyAsTemplate indexCtx
+                >>= loadAndApplyTemplate "templates/home.html" indexCtx
                 >>= loadAndApplyTemplate "templates/default.html" indexCtx
                 >>= relativizeUrls
 
